@@ -1,19 +1,16 @@
-//Перше — описати методи та поля — вони public бо є частиною api. Hash code check зробити. Не реалізовуємо методи поки що  Реалізувати Дані класу: вказівник на динамічний список ненульових коефіцієнтів
+#nullable enable
 using System;
-using System.Collections.Generic;
 using System.Text;
-
 
 namespace SparsePolynomials
 {
-    public class SparsePolynomial
+    public class SparsePolynomial : IPolynomial
     {
-        // Вузол для зберігання коефіцієнта та степеня
         private class Node
         {
             public int Exponent { get; set; }
             public double Coefficient { get; set; }
-            public Node Next { get; set; }
+            public Node? Next { get; set; } = null;
 
             public Node(int exponent, double coefficient)
             {
@@ -23,33 +20,17 @@ namespace SparsePolynomials
             }
         }
 
-        private Node head; // Вказівник на початок списку
+        private Node? head = null;
 
-        public SparsePolynomial()
-        {
-            head = null;
-        }
+        public SparsePolynomial() { }
 
-        // Додати Додати реалізацію методів( сума двох поліномів, віднімання одного поліному від іншого, множення до полінома числа та
-        //додавання до полінома числа, обчислення значення полінома для заданого
-        //значення змінної, перемноження двох поліномів)
-
-        // Додати терм (член полінома) — допоміжний метод для формування полінома
         public void AddTerm(int exponent, double coefficient)
         {
-            if (coefficient == 0)
-                return;
+            if (Math.Abs(coefficient) < 1e-12) return;
 
-            if (head == null)
-            {
-                head = new Node(exponent, coefficient);
-                return;
-            }
+            Node? prev = null;
+            Node? current = head;
 
-            Node current = head;
-            Node prev = null;
-
-            // Вставка з урахуванням порядку за степенем
             while (current != null && current.Exponent > exponent)
             {
                 prev = current;
@@ -58,15 +39,11 @@ namespace SparsePolynomials
 
             if (current != null && current.Exponent == exponent)
             {
-                // Якщо вже є такий степінь — додаємо коефіцієнти
                 current.Coefficient += coefficient;
                 if (Math.Abs(current.Coefficient) < 1e-12)
                 {
-                    // Якщо став нульовим — видаляємо
-                    if (prev == null)
-                        head = current.Next;
-                    else
-                        prev.Next = current.Next;
+                    if (prev == null) head = current.Next;
+                    else prev.Next = current.Next;
                 }
             }
             else
@@ -85,30 +62,29 @@ namespace SparsePolynomials
             }
         }
 
-        public SparsePolynomial Add(SparsePolynomial other)
+        public IPolynomial Add(IPolynomial other)
         {
-            // Реалізація додавання двох поліномів
+            if (other is not SparsePolynomial o) throw new ArgumentException("Invalid polynomial type");
+
             SparsePolynomial result = new SparsePolynomial();
+            Node? p1 = head;
+            Node? p2 = o.head;
 
-            Node p1 = this.head;
-            Node p2 = other.head;
-
-            while (p1 != null && p2 != null)
+            while (p1 != null || p2 != null)
             {
                 if (p2 == null || (p1 != null && p1.Exponent > p2.Exponent))
                 {
-                    result.AddTerm(p1.Exponent, p1.Coefficient);
+                    result.AddTerm(p1!.Exponent, p1.Coefficient);
                     p1 = p1.Next;
                 }
                 else if (p1 == null || p1.Exponent < p2.Exponent)
                 {
-                    result.AddTerm(p2.Exponent, p2.Coefficient);
+                    result.AddTerm(p2!.Exponent, p2.Coefficient);
                     p2 = p2.Next;
                 }
                 else
                 {
-                    // однаковий степінь
-                    result.AddTerm(p1.Exponent, p1.Coefficient + p2.Coefficient);
+                    result.AddTerm(p1.Exponent, p1.Coefficient + p2!.Coefficient);
                     p1 = p1.Next;
                     p2 = p2.Next;
                 }
@@ -116,30 +92,30 @@ namespace SparsePolynomials
 
             return result;
         }
-        public SparsePolynomial Subtract(SparsePolynomial other)
-        {
-            // Реалізація віднімання двох поліномів
-            SparsePolynomial result = new SparsePolynomial();
-            
-            Node p1 = this.head;
-            Node p2 = other.head;
 
-            while (p1 != null && p2 != null)
+        public IPolynomial Subtract(IPolynomial other)
+        {
+            if (other is not SparsePolynomial o) throw new ArgumentException("Invalid polynomial type");
+
+            SparsePolynomial result = new SparsePolynomial();
+            Node? p1 = head;
+            Node? p2 = o.head;
+
+            while (p1 != null || p2 != null)
             {
                 if (p2 == null || (p1 != null && p1.Exponent > p2.Exponent))
                 {
-                    result.AddTerm(p1.Exponent, p1.Coefficient);
+                    result.AddTerm(p1!.Exponent, p1.Coefficient);
                     p1 = p1.Next;
                 }
                 else if (p1 == null || p1.Exponent < p2.Exponent)
                 {
-                    result.AddTerm(p2.Exponent, -p2.Coefficient);
+                    result.AddTerm(p2!.Exponent, -p2.Coefficient);
                     p2 = p2.Next;
                 }
                 else
                 {
-                    // однаковий степінь
-                    result.AddTerm(p1.Exponent, p1.Coefficient - p2.Coefficient);
+                    result.AddTerm(p1.Exponent, p1.Coefficient - p2!.Coefficient);
                     p1 = p1.Next;
                     p2 = p2.Next;
                 }
@@ -147,102 +123,101 @@ namespace SparsePolynomials
 
             return result;
         }
-        public SparsePolynomial Multiply(double scalar)
+
+        public IPolynomial Multiply(double scalar)
         {
-            // Реалізація множення полінома на число
             SparsePolynomial result = new SparsePolynomial();
+            if (Math.Abs(scalar) < 1e-12) return result;
 
-            if (Math.Abs(scalar) < 1e-12)
-                return result; // Повертаємо нульовий поліном
-
-            Node current = head;
+            Node? current = head;
             while (current != null)
             {
                 result.AddTerm(current.Exponent, current.Coefficient * scalar);
                 current = current.Next;
             }
+
             return result;
         }
-        public SparsePolynomial Add(double scalar)
-        {
-            // Реалізація додавання до полінома числа
-            SparsePolynomial result = new SparsePolynomial();
 
-            Node current = head;
+        public IPolynomial Add(double scalar)
+        {
+            SparsePolynomial result = new SparsePolynomial();
+            Node? current = head;
             while (current != null)
             {
                 result.AddTerm(current.Exponent, current.Coefficient);
                 current = current.Next;
             }
-            result.AddTerm(0, scalar); // Додаємо константу
+            result.AddTerm(0, scalar);
             return result;
         }
+
+        public IPolynomial Multiply(IPolynomial other)
+        {
+            if (other is not SparsePolynomial o) throw new ArgumentException("Invalid polynomial type");
+
+            SparsePolynomial result = new SparsePolynomial();
+            Node? p1 = head;
+
+            while (p1 != null)
+            {
+                Node? p2 = o.head;
+                while (p2 != null)
+                {
+                    result.AddTerm(p1.Exponent + p2.Exponent, p1.Coefficient * p2.Coefficient);
+                    p2 = p2.Next;
+                }
+                p1 = p1.Next;
+            }
+
+            return result;
+        }
+
         public double Evaluate(double x)
         {
-            // Реалізація обчислення значення полінома для заданого значення змінної
             double result = 0;
-            Node current = head;
+            Node? current = head;
+
             while (current != null)
             {
                 result += current.Coefficient * Math.Pow(x, current.Exponent);
                 current = current.Next;
             }
-            return result;
-        }
-        public SparsePolynomial Multiply(SparsePolynomial other)
-        {
-            // Реалізація перемноження двох поліномів
-            SparsePolynomial result = new SparsePolynomial();
 
-            Node p1 = this.head;
-            while (p1 != null)
-            {
-                Node p2 = other.head;
-                while (p2 != null)
-                {
-                    int exponent = p1.Exponent + p2.Exponent;
-                    double coefficient = p1.Coefficient * p2.Coefficient;
-                    result.AddTerm(exponent, coefficient);
-                    p2 = p2.Next;
-                }
-                p1 = p1.Next;
-            }
             return result;
         }
 
         public override int GetHashCode()
         {
             int hash = 17;
-            Node current = head;
+            Node? current = head;
+
             while (current != null)
             {
                 hash = hash * 31 + current.Exponent.GetHashCode();
                 hash = hash * 31 + current.Coefficient.GetHashCode();
                 current = current.Next;
             }
+
             return hash;
         }
 
-        public override bool Equals(object obj)
+        public override bool Equals(object? obj)
         {
-            if (obj is SparsePolynomial other)
+            if (obj is not SparsePolynomial other) return false;
+
+            Node? c1 = head;
+            Node? c2 = other.head;
+
+            while (c1 != null && c2 != null)
             {
-                Node current1 = head;
-                Node current2 = other.head;
-
-                while (current1 != null && current2 != null)
-                {
-                    if (current1.Exponent != current2.Exponent || Math.Abs(current1.Coefficient - current2.Coefficient) > 1e-12)
-                    {
-                        return false;
-                    }
-                    current1 = current1.Next;
-                    current2 = current2.Next;
-                }
-
-                return current1 == null && current2 == null;
+                if (c1.Exponent != c2.Exponent || Math.Abs(c1.Coefficient - c2.Coefficient) > 1e-12)
+                    return false;
+                c1 = c1.Next;
+                c2 = c2.Next;
             }
-            return false;
+
+            return c1 == null && c2 == null;
         }
 
         public override string ToString()
@@ -250,33 +225,32 @@ namespace SparsePolynomials
             if (head == null) return "0";
 
             StringBuilder sb = new StringBuilder();
-            Node current = head;
+            Node? current = head;
 
             while (current != null)
             {
-                double coefficient = current.Coefficient;
-                int exponent = current.Exponent;
+                double coef = current.Coefficient;
+                int exp = current.Exponent;
+
                 if (sb.Length > 0)
                 {
-                    sb.Append(coefficient >= 0 ? " + " : " - ");
-                    coefficient = Math.Abs(coefficient);
+                    sb.Append(coef >= 0 ? " + " : " - ");
+                    coef = Math.Abs(coef);
                 }
-                else if (coefficient < 0)
+                else if (coef < 0)
                 {
                     sb.Append("-");
-                    coefficient = Math.Abs(coefficient);
+                    coef = Math.Abs(coef);
                 }
-                if (exponent == 0)
-                    sb.AppendFormat("{0} ", coefficient);
-                else if (exponent == 1)
-                    sb.AppendFormat("{0}x ", coefficient);
-                else
-                    sb.AppendFormat("{0}x^{1} ", Math.Abs(coefficient), exponent);
-                
+
+                if (exp == 0) sb.Append(coef);
+                else if (exp == 1) sb.Append($"{coef}x");
+                else sb.Append($"{coef}x^{exp}");
+
                 current = current.Next;
             }
+
             return sb.ToString();
         }
-
     }
 }
